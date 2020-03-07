@@ -1,15 +1,15 @@
-from aiowiserhub import wiserHub, _LOGGER, WiserException
+from aioWiserHeatingAPI.aiowiserhub import wiserHub, _LOGGER, WiserException
 import logging
 import asyncio
 import json
 import aiohttp
-import time
+from datetime import datetime
 
 _LOGGER.setLevel(level=logging.DEBUG)
 
-WISERGOODIP = "YOURIPHERE"
+WISERGOODIP = "192.168.200.193"
 WISERBADIP = "192.168.1.1"
-WISERKEY = "YOURKEYHERE"
+WISERKEY = "1DOVwWbVWmzCnQz/dsqdBzaAwC1b+ZVDym4KtfwlsgRPrstMS5jny8poU0mP57ZdQXjWWKGxBTOtzd1tH7gUjhXhPKEF5HIwE4pLbclAS1CKhYHWkf5ujiWbtH5Pd54H"
 
 STARS = "*************************"
 
@@ -31,9 +31,21 @@ class wiserTest:
 
     async def async_tests(self):
         wh = wiserHub(self.wiserip, self.wiserkey)
-        data = await wh.asyncGetHubData()
+
+        print("###################################################")
+        print("Connecting To Hub")
+        print("###################################################")
+
+        try:
+            test_start_time = datetime.now()
+            data = await wh.asyncGetHubData()
+            data_time = datetime.now()
+
+        except WiserException as ex:
+            print(ex)
+            return None
         if data:
-            self.output("Got data from Wiser Hub")
+            self.output("Got data from Wiser Hub in {} seconds".format((data_time - test_start_time).total_seconds()))
 
             print("###################################################")
             print("Value Checks Section")
@@ -114,7 +126,7 @@ class wiserTest:
                     await wh.asyncSetSmartPlugState(wh.smartPlugs[0].get("id"), "On"),
                     "Turn smart plug on",
                 )
-                await asyncio.sleep(5)
+                await asyncio.sleep(1)
                 self.output(
                     await wh.asyncSetSmartPlugState(wh.smartPlugs[0].get("id"), "Off"),
                     "Turn smart plug off",
@@ -188,6 +200,12 @@ class wiserTest:
                     self.output(ex, "Turn smart plug to invalid mode")
 
             # All tests completed
+            test_end_time = datetime.now()
+            print("###################################################")
+            print("End of Tests")
+            print("###################################################")
+            print("Tests took {} seconds".format((test_end_time - test_start_time).total_seconds()))
+            print("Data request from hub took {} seconds".format((data_time - test_start_time).total_seconds()))
             return True
         else:
             print("###################################################")

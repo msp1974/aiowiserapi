@@ -24,14 +24,18 @@ TEMP_MAXIMUM = 30
 TEMP_OFF = -20
 TIMEOUT = 10
 
-WISERHUBURL = "http://{}/"
-WISERDATA = "data/domain/"
-WISERNETWORK = "data/network/"
+WISERHUBURL = "http://{}/data/"
+#Api paths
+WISERDATA = "domain/"
 WISERHOTWATER = "Hotwater/{}"
+WISERNETWORK = "network/"
 WISERPLUG = "SmartPlug/{}"
 WISERROOM = "Room/{}"
 WISERSCHEDULE = "Schedule/{}"
 WISERSYSTEM = "System/{}"
+WISERV2SCHEDULE = "schedules/{}"
+WISERV2API = "v2/"
+
 
 
 class WiserException(Exception):
@@ -52,7 +56,7 @@ class wiserHub:
     and smart plugs
     """
 
-    def __init__(self, host, api_key):
+    def __init__(self, host, api_key, api_version = 1):
         """Setup session and host information"""
         self.host = host
         self.api_key = api_key
@@ -60,6 +64,7 @@ class wiserHub:
             "SECRET": self.api_key,
             "Content-Type": "application/json;charset=UTF-8",
         }
+        self._api_version = api_version
         self._cloud = {}
         self._capability = {}
         self._devices = {}
@@ -108,6 +113,7 @@ class wiserHub:
     async def request(self, mode="get", path="", json=None):
         """Make a request to the Wiser Hub."""
         url = WISERHUBURL.format(self.host) + WISERDATA + path
+
         timeout = aiohttp.ClientTimeout(total=TIMEOUT)
 
         try:
@@ -200,7 +206,12 @@ class wiserHub:
                     
         except AssertionError as ex:
             _LOGGER.debug("Wiser Hub returned an error response")
-            raise WiserHubException(resp.status, await resp.text()) 
+            if resp.status == 401:
+                raise WiserHubException("AuthenticationError", "Authentication error.  Check secret key.")
+            elif resp.status == 404:
+                raise WiserHubException("InvalidAPICall", "Api path not found.")
+            else:
+                raise WiserHubException("APIError", "Unknown API or connection error.")
         except AttributeError as ex:
             _LOGGER.debug("Data not returned from Wiser Hub")
             raise WiserHubException("NoData", "Data not returned from Wiser Hub")
@@ -642,7 +653,7 @@ class wiserHub:
         try:
             if mode != "boost":
                 # Cancel boost
-                response = await self.request(
+                await self.request(
                     "patch",
                     path=WISERROOM.format(roomId),
                     json=roomModeMapping.get("cancelboost"),

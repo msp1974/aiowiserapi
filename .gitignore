@@ -1,0 +1,11 @@
+bin
+lib
+share
+aiowiserhub.v1.0.py
+wiserkeys.params
+*.pyc
+build
+dist
+wiser_heating_api.egg-info
+.idea
+room1schedule.json
